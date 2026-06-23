@@ -1,0 +1,95 @@
+name: Test flake-update-action default input values
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Invoke action with only required inputs (testing defaults)
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-token
+          pull-request-author: "Test User <test@example.com>"
+
+      - name: Assert action was invoked
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          if [ -z "$OUTCOME" ]; then
+            echo "FAIL: action step did not run (outcome is empty)"
+            exit 1
+          fi
+          echo "PASS: action was invoked with outcome=$OUTCOME"
+
+      - name: Assert pull-request-merge-method default is rebase
+        run: |
+          ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          if ! grep -A3 "pull-request-merge-method:" "$ACTION_YML" | grep -q '"rebase"'; then
+            echo "FAIL: pull-request-merge-method default is not 'rebase'"
+            exit 1
+          fi
+          echo "PASS: pull-request-merge-method default is 'rebase'"
+
+      - name: Assert delete-branch default is false
+        run: |
+          ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          if ! grep -A3 "delete-branch:" "$ACTION_YML" | grep -q '"false"'; then
+            echo "FAIL: delete-branch default is not 'false'"
+            exit 1
+          fi
+          echo "PASS: delete-branch default is 'false'"
+
+      - name: Assert automerge default is false
+        run: |
+          ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          if ! grep -A3 "automerge:" "$ACTION_YML" | grep -q '"false"'; then
+            echo "FAIL: automerge default is not 'false'"
+            exit 1
+          fi
+          echo "PASS: automerge default is 'false'"
+
+      - name: Assert include-merge-commits default is false
+        run: |
+          ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          if ! grep -A3 "include-merge-commits:" "$ACTION_YML" | grep -q '"false"'; then
+            echo "FAIL: include-merge-commits default is not 'false'"
+            exit 1
+          fi
+          echo "PASS: include-merge-commits default is 'false'"
+
+      - name: Assert pull-request-branch-prefix default
+        run: |
+          ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          EXPECTED_PREFIX="create-pull-request/update-"
+          if ! grep -q "$EXPECTED_PREFIX" "$ACTION_YML"; then
+            echo "FAIL: pull-request-branch-prefix default '$EXPECTED_PREFIX' not found"
+            exit 1
+          fi
+          echo "PASS: pull-request-branch-prefix default '$EXPECTED_PREFIX' found"
+
+      - name: Assert pull-request-labels default is empty string
+        run: |
+          ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          if ! grep -A4 "pull-request-labels:" "$ACTION_YML" | grep -q 'default: ""'; then
+            echo "FAIL: pull-request-labels default is not empty string"
+            exit 1
+          fi
+          echo "PASS: pull-request-labels default is empty string"
+
+      - name: Assert action uses composite runner
+        run: |
+          ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          if ! grep -q "using: composite" "$ACTION_YML"; then
+            echo "FAIL: action does not use composite runner"
+            exit 1
+          fi
+          echo "PASS: action uses composite runner"

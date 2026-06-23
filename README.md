@@ -1,14 +1,70 @@
-# cpcloud/flake-update-action
+# Update flake dependencies
 
-Update flake dependencies
+This action will create PRs that update flake dependencies.
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/cpcloud/flake-update-action](https://github.com/cpcloud/flake-update-action).
+## Usage in a GitHub workflow
 
-## Versions
+```yaml
+jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dependency:
+          - nixpkgs
+          - poetry2nix
+    steps:
+      - name: Update ${{ matrix.dependency }}
+        uses: cpcloud/flake-update-action@*
+        with:
+          dependency: ${{ matrix.dependency }}
+          pull-request-token: ${{ secrets.ANOTHER_TOKEN }}
+          pull-request-author: "Me <me@me.com>"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v1.0.3 | [`v1.0.3`](https://github.com/chainguard-actions/cpcloud-flake-update-action/tree/v1.0.3) | [`b6b266a`](https://github.com/cpcloud/flake-update-action/commit/b6b266a2988d785b8fed003f8eb656a915d514bb) |
+## Inputs
+
+```yaml
+inputs:
+  dependency:
+    required: true
+    description: "The flake dependency to update"
+  pull-request-token:
+    required: true
+    description: "Access token used to create pull requests"
+  pull-request-author:
+    required: true
+    description: "The author of the pull request"
+  pull-request-merge-method:
+    required: false
+    description: "The merge method for automerging pull requests"
+    default: "rebase"
+  delete-branch:
+    required: false
+    default: "false"
+    description: "Delete branch upon merge"
+  github-token:
+    required: false
+    description: "Access token to increase the rate limit for GitHub API requests"
+  pull-request-branch-prefix:
+    required: false
+    default: "create-pull-request/update-"
+    description: "Prefix of the branch for the pull request"
+  pull-request-labels:
+    required: false
+    description: "Labels to attach to the pull request"
+    default: ""
+  include-merge-commits:
+    required: false
+    description: "Whether to show merge commits in the log"
+    default: "false"
+  automerge:
+    required: false
+    description: "Whether to set the pull request to automatically merge on success. Requires that the automerge feature is enabled on GitHub."
+    default: "false"
+```
 
 ## Privacy
 
