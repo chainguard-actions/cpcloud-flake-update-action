@@ -9,6 +9,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
 | v1.0.3 | [`v1.0.3`](https://github.com/chainguard-actions/cpcloud-flake-update-action/tree/v1.0.3) | [`b6b266a`](https://github.com/cpcloud/flake-update-action/commit/b6b266a2988d785b8fed003f8eb656a915d514bb) |
+| v1.0.4 | [`v1.0.4`](https://github.com/chainguard-actions/cpcloud-flake-update-action/tree/v1.0.4) | [`07423fb`](https://github.com/cpcloud/flake-update-action/commit/07423fb605d16a734337d4cdd9f307404ff851a4) |
 
 ## Privacy
 
