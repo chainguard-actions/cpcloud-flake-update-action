@@ -1,0 +1,76 @@
+name: Test flake-update-action default input values
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Invoke action with only required inputs (expected to fail without nix/real tokens)
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-token
+          pull-request-author: "Test User <test@example.com>"
+
+      - name: Verify pull-request-merge-method defaults to rebase
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          # Check that pull-request-merge-method has default of rebase
+          if ! echo "$CONTENT" | grep -A3 "pull-request-merge-method:" | grep -q "rebase"; then
+            echo "FAIL: pull-request-merge-method does not default to 'rebase'"
+            exit 1
+          fi
+          echo "PASS: pull-request-merge-method defaults to 'rebase'"
+
+      - name: Verify delete-branch defaults to false
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -A5 "delete-branch:" | grep -q '"false"'; then
+            echo "FAIL: delete-branch does not default to 'false'"
+            exit 1
+          fi
+          echo "PASS: delete-branch defaults to 'false'"
+
+      - name: Verify automerge defaults to false
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -A5 "automerge:" | grep -q '"false"'; then
+            echo "FAIL: automerge does not default to 'false'"
+            exit 1
+          fi
+          echo "PASS: automerge defaults to 'false'"
+
+      - name: Verify include-merge-commits defaults to false
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -A5 "include-merge-commits:" | grep -q '"false"'; then
+            echo "FAIL: include-merge-commits does not default to 'false'"
+            exit 1
+          fi
+          echo "PASS: include-merge-commits defaults to 'false'"
+
+      - name: Verify pull-request-branch-prefix has correct default
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -q "create-pull-request/update-"; then
+            echo "FAIL: pull-request-branch-prefix does not have expected default"
+            exit 1
+          fi
+          echo "PASS: pull-request-branch-prefix has correct default"
+
+      - name: Verify pull-request-labels defaults to empty string
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          # pull-request-labels should have a default (empty string)
+          if ! echo "$CONTENT" | grep -A3 "pull-request-labels:" | grep -q 'default:'; then
+            echo "FAIL: pull-request-labels does not have a default"
+            exit 1
+          fi
+          echo "PASS: pull-request-labels has a default value"

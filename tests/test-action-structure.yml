@@ -1,0 +1,96 @@
+name: Test flake-update-action composite step structure
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Invoke action (expected to fail without nix/real tokens)
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-token
+          pull-request-author: "Test User <test@example.com>"
+
+      - name: Verify get_current_commit step uses flake-dep-info-action
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -q "cpcloud/flake-dep-info-action"; then
+            echo "FAIL: flake-dep-info-action not referenced in action.yml"
+            exit 1
+          fi
+          echo "PASS: flake-dep-info-action is referenced"
+
+      - name: Verify compare-commits-action is used
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -q "cpcloud/compare-commits-action"; then
+            echo "FAIL: compare-commits-action not referenced in action.yml"
+            exit 1
+          fi
+          echo "PASS: compare-commits-action is referenced"
+
+      - name: Verify create-pull-request action is used
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -q "peter-evans/create-pull-request"; then
+            echo "FAIL: peter-evans/create-pull-request not referenced in action.yml"
+            exit 1
+          fi
+          echo "PASS: peter-evans/create-pull-request is referenced"
+
+      - name: Verify enable-pull-request-automerge action is used
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -q "peter-evans/enable-pull-request-automerge"; then
+            echo "FAIL: peter-evans/enable-pull-request-automerge not referenced in action.yml"
+            exit 1
+          fi
+          echo "PASS: peter-evans/enable-pull-request-automerge is referenced"
+
+      - name: Verify step IDs are correctly defined
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+
+          for step_id in get_current_commit get_new_commit compare_commits create_pr; do
+            if ! echo "$CONTENT" | grep -q "id: $step_id"; then
+              echo "FAIL: step id '$step_id' not found in action.yml"
+              exit 1
+            fi
+            echo "PASS: step id '$step_id' found"
+          done
+
+      - name: Verify conditional steps check rev equality
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          # The compare_commits and create_pr steps should only run when revs differ
+          if ! echo "$CONTENT" | grep -q "get_current_commit.outputs.rev != steps.get_new_commit.outputs.rev"; then
+            echo "FAIL: conditional check for rev difference not found"
+            exit 1
+          fi
+          echo "PASS: conditional rev difference check found"
+
+      - name: Verify automerge conditional checks PR operation
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -q "pull-request-operation == 'created'"; then
+            echo "FAIL: automerge conditional for PR operation not found"
+            exit 1
+          fi
+          echo "PASS: automerge conditional for PR operation found"
+
+      - name: Verify commit message format uses short-rev
+        run: |
+          CONTENT=$(cat "$GITHUB_WORKSPACE/action.yml")
+          if ! echo "$CONTENT" | grep -q "short-rev"; then
+            echo "FAIL: short-rev not used in commit message"
+            exit 1
+          fi
+          echo "PASS: short-rev used in commit message"

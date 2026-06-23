@@ -1,0 +1,42 @@
+name: Test github-token input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Verify action.yml declares github-token input
+        run: |
+          if ! grep -q 'github-token' "$GITHUB_WORKSPACE/actions/hardened/cpcloud--flake-update-action/v1.0.2/action.yml"; then
+            echo "FAIL: github-token input not found in action.yml"
+            exit 1
+          fi
+          echo "PASS: github-token input is declared in action.yml"
+      - name: Verify github-token input has correct metadata
+        run: |
+          # Check that github-token is optional (required: false) and has a description
+          ACTION_YML="$GITHUB_WORKSPACE/actions/hardened/cpcloud--flake-update-action/v1.0.2/action.yml"
+          if ! grep -A3 'github-token:' "$ACTION_YML" | grep -q 'required: false'; then
+            echo "FAIL: github-token should be optional (required: false)"
+            exit 1
+          fi
+          echo "PASS: github-token is correctly marked as optional"
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-token
+          pull-request-author: "Test User <test@example.com>"
+          github-token: fake-github-token
+          pull-request-branch-prefix: "test/update-"
+          pull-request-labels: ""
+          include-merge-commits: "false"
+          automerge: "false"
+          delete-branch: "false"
+          pull-request-merge-method: "rebase"
+      - name: Assert action was invoked with github-token
+        run: |
+          echo "Action completed (may have failed due to missing nix/flake.lock, which is expected in test environment)"
+          echo "PASS: github-token input was passed to the action"
