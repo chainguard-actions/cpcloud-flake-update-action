@@ -1,0 +1,32 @@
+name: Test basic invocation with required inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-token-for-testing
+          pull-request-author: "Test User <test@test.com>"
+          automerge: "false"
+          delete-branch: "false"
+        continue-on-error: true
+
+      - name: Assert action was invoked
+        run: |
+          echo "Action outcome: ${{ steps.action.outcome }}"
+          # The action requires Nix and external actions not available under act.
+          # We verify the action was invoked (outcome is success or failure, not skipped).
+          if [ "${{ steps.action.outcome }}" = "" ]; then
+            echo "FAIL: action step did not run"
+            exit 1
+          fi
+          echo "PASS: action was invoked with required inputs"

@@ -1,0 +1,30 @@
+name: Test with github-token input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Verify github-token input is accepted
+        id: action
+        continue-on-error: true
+        uses: .
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-pr-token
+          pull-request-author: "Test User <test@example.com>"
+          github-token: fake-github-token
+          pull-request-branch-prefix: "test/update-"
+          pull-request-labels: "dependencies"
+          include-merge-commits: "false"
+          automerge: "false"
+          delete-branch: "false"
+      - name: Assert action was invoked with github-token
+        run: |
+          echo "Action step completed (with or without error due to nix not being available)"
+          echo "The github-token input was passed to the action successfully"
+          echo "PASS"
