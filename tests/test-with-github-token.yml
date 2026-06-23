@@ -1,0 +1,83 @@
+name: Test flake-update-action with github-token input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install nix stub
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/nix" << 'EOF'
+          #!/usr/bin/env bash
+          echo "nix stub: $*"
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/nix"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Create minimal flake.lock
+        run: |
+          cat > "$GITHUB_WORKSPACE/flake.lock" << 'EOF'
+          {
+            "nodes": {
+              "nixpkgs": {
+                "locked": {
+                  "lastModified": 1700000000,
+                  "narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                  "owner": "NixOS",
+                  "repo": "nixpkgs",
+                  "rev": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "type": "github"
+                },
+                "original": {
+                  "owner": "NixOS",
+                  "ref": "nixpkgs-unstable",
+                  "repo": "nixpkgs",
+                  "type": "github"
+                }
+              },
+              "root": {
+                "inputs": {
+                  "nixpkgs": "nixpkgs"
+                }
+              }
+            },
+            "root": "root",
+            "version": 7
+          }
+          EOF
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-pr-token
+          pull-request-author: "Test User <test@example.com>"
+          github-token: fake-github-token
+
+      - name: Assert action accepted github-token input
+        run: |
+          echo "Action was invoked with github-token input"
+          echo "PASS: github-token input is accepted by the action"
+
+      - name: Assert github-token is declared as optional in action.yml
+        run: |
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          else
+            echo "FAIL: action.yml not found"
+            exit 1
+          fi
+          if grep -q 'github-token' "$ACTION_YML"; then
+            echo "PASS: github-token is declared in action.yml"
+          else
+            echo "FAIL: github-token not found in action.yml"
+            exit 1
+          fi

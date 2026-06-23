@@ -1,0 +1,130 @@
+name: Test flake-update-action default input values
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install nix stub
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/nix" << 'EOF'
+          #!/usr/bin/env bash
+          echo "nix stub: $*"
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/nix"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-token
+          pull-request-author: "Test User <test@example.com>"
+
+      - name: Locate action.yml
+        id: locate
+        run: |
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            echo "path=$GITHUB_WORKSPACE/action.yml" >> "$GITHUB_OUTPUT"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            echo "path=$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" >> "$GITHUB_OUTPUT"
+          else
+            echo "FAIL: action.yml not found"
+            exit 1
+          fi
+
+      - name: Assert pull-request-merge-method default is rebase
+        env:
+          ACTION_YML: ${{ steps.locate.outputs.path }}
+        run: |
+          echo "Checking action.yml at: $ACTION_YML"
+          if grep -A3 'pull-request-merge-method' "$ACTION_YML" | grep -q 'rebase'; then
+            echo "PASS: pull-request-merge-method default is 'rebase'"
+          else
+            echo "FAIL: pull-request-merge-method default is not 'rebase'"
+            cat "$ACTION_YML"
+            exit 1
+          fi
+
+      - name: Assert delete-branch default is false
+        env:
+          ACTION_YML: ${{ steps.locate.outputs.path }}
+        run: |
+          echo "Checking delete-branch default in: $ACTION_YML"
+          if awk '/delete-branch:/{found=1} found && /default:/{print; exit}' "$ACTION_YML" | grep -q '"false"'; then
+            echo "PASS: delete-branch default is 'false'"
+          else
+            echo "FAIL: delete-branch default is not 'false'"
+            exit 1
+          fi
+
+      - name: Assert automerge default is false
+        env:
+          ACTION_YML: ${{ steps.locate.outputs.path }}
+        run: |
+          echo "Checking automerge default in: $ACTION_YML"
+          if awk '/^  automerge:/{found=1} found && /default:/{print; exit}' "$ACTION_YML" | grep -q '"false"'; then
+            echo "PASS: automerge default is 'false'"
+          else
+            echo "FAIL: automerge default is not 'false'"
+            exit 1
+          fi
+
+      - name: Assert include-merge-commits default is false
+        env:
+          ACTION_YML: ${{ steps.locate.outputs.path }}
+        run: |
+          echo "Checking include-merge-commits default in: $ACTION_YML"
+          if awk '/include-merge-commits:/{found=1} found && /default:/{print; exit}' "$ACTION_YML" | grep -q '"false"'; then
+            echo "PASS: include-merge-commits default is 'false'"
+          else
+            echo "FAIL: include-merge-commits default is not 'false'"
+            exit 1
+          fi
+
+      - name: Assert pull-request-branch-prefix default
+        env:
+          ACTION_YML: ${{ steps.locate.outputs.path }}
+        run: |
+          echo "Checking pull-request-branch-prefix default in: $ACTION_YML"
+          if grep -A3 'pull-request-branch-prefix' "$ACTION_YML" | grep -q 'create-pull-request/update-'; then
+            echo "PASS: pull-request-branch-prefix default is 'create-pull-request/update-'"
+          else
+            echo "FAIL: pull-request-branch-prefix default is not 'create-pull-request/update-'"
+            exit 1
+          fi
+
+      - name: Assert pull-request-labels default is empty string
+        env:
+          ACTION_YML: ${{ steps.locate.outputs.path }}
+        run: |
+          echo "Checking pull-request-labels default in: $ACTION_YML"
+          if awk '/pull-request-labels:/{found=1} found && /default:/{print; exit}' "$ACTION_YML" | grep -q 'default: ""'; then
+            echo "PASS: pull-request-labels default is empty string"
+          else
+            echo "FAIL: pull-request-labels default is not empty string"
+            exit 1
+          fi
+
+      - name: Assert required inputs are marked required
+        env:
+          ACTION_YML: ${{ steps.locate.outputs.path }}
+        run: |
+          echo "Checking required inputs in: $ACTION_YML"
+          REQUIRED_INPUTS="dependency pull-request-token pull-request-author"
+          for input in $REQUIRED_INPUTS; do
+            if awk "/^  ${input}:/{found=1} found && /required: true/{print; exit}" "$ACTION_YML" | grep -q 'required: true'; then
+              echo "PASS: $input is marked required"
+            else
+              echo "FAIL: $input is not marked required"
+              exit 1
+            fi
+          done

@@ -1,0 +1,168 @@
+name: Test flake-update-action composite structure
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install nix stub
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/nix" << 'EOF'
+          #!/usr/bin/env bash
+          echo "nix stub: $*"
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/nix"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          dependency: nixpkgs
+          pull-request-token: fake-token
+          pull-request-author: "Test User <test@example.com>"
+
+      - name: Assert action uses composite runner
+        run: |
+          ACTION_YML=""
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml"
+          else
+            echo "FAIL: action.yml not found"
+            exit 1
+          fi
+          echo "Checking composite runner in: $ACTION_YML"
+          if grep -q 'using: composite' "$ACTION_YML"; then
+            echo "PASS: action uses composite runner"
+          else
+            echo "FAIL: action does not use composite runner"
+            exit 1
+          fi
+
+      - name: Assert action uses flake-dep-info-action
+        run: |
+          ACTION_YML=""
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml"
+          fi
+          echo "Checking for flake-dep-info-action in: $ACTION_YML"
+          if grep -q 'cpcloud/flake-dep-info-action' "$ACTION_YML"; then
+            echo "PASS: action uses cpcloud/flake-dep-info-action"
+          else
+            echo "FAIL: action does not use cpcloud/flake-dep-info-action"
+            exit 1
+          fi
+
+      - name: Assert action uses compare-commits-action
+        run: |
+          ACTION_YML=""
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml"
+          fi
+          echo "Checking for compare-commits-action in: $ACTION_YML"
+          if grep -q 'cpcloud/compare-commits-action' "$ACTION_YML"; then
+            echo "PASS: action uses cpcloud/compare-commits-action"
+          else
+            echo "FAIL: action does not use cpcloud/compare-commits-action"
+            exit 1
+          fi
+
+      - name: Assert action uses create-pull-request
+        run: |
+          ACTION_YML=""
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml"
+          fi
+          echo "Checking for peter-evans/create-pull-request in: $ACTION_YML"
+          if grep -q 'peter-evans/create-pull-request' "$ACTION_YML"; then
+            echo "PASS: action uses peter-evans/create-pull-request"
+          else
+            echo "FAIL: action does not use peter-evans/create-pull-request"
+            exit 1
+          fi
+
+      - name: Assert action uses enable-pull-request-automerge
+        run: |
+          ACTION_YML=""
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml"
+          fi
+          echo "Checking for peter-evans/enable-pull-request-automerge in: $ACTION_YML"
+          if grep -q 'peter-evans/enable-pull-request-automerge' "$ACTION_YML"; then
+            echo "PASS: action uses peter-evans/enable-pull-request-automerge"
+          else
+            echo "FAIL: action does not use peter-evans/enable-pull-request-automerge"
+            exit 1
+          fi
+
+      - name: Assert action has nix flake update step
+        run: |
+          ACTION_YML=""
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml"
+          fi
+          echo "Checking for nix flake update step in: $ACTION_YML"
+          if grep -q 'nix flake update' "$ACTION_YML"; then
+            echo "PASS: action has nix flake update step"
+          else
+            echo "FAIL: action does not have nix flake update step"
+            exit 1
+          fi
+
+      - name: Assert action name and description
+        run: |
+          ACTION_YML=""
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml"
+          fi
+          echo "Checking action name in: $ACTION_YML"
+          if grep -q 'name: "flake-update-action"' "$ACTION_YML"; then
+            echo "PASS: action name is 'flake-update-action'"
+          else
+            echo "FAIL: action name is not 'flake-update-action'"
+            exit 1
+          fi
+
+          if grep -q 'description: "Update flake dependencies"' "$ACTION_YML"; then
+            echo "PASS: action description is 'Update flake dependencies'"
+          else
+            echo "FAIL: action description is not 'Update flake dependencies'"
+            exit 1
+          fi
+
+      - name: Assert automerge step has correct conditional
+        run: |
+          ACTION_YML=""
+          if [ -f "$GITHUB_WORKSPACE/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/action.yml"
+          elif [ -f "$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml" ]; then
+            ACTION_YML="$GITHUB_WORKSPACE/pristine/cpcloud--flake-update-action/v2.0.0/action.yml"
+          fi
+          echo "Checking automerge conditional in: $ACTION_YML"
+          if grep -q "pull-request-operation == 'created'" "$ACTION_YML"; then
+            echo "PASS: automerge step checks for 'created' PR operation"
+          else
+            echo "FAIL: automerge step does not check for 'created' PR operation"
+            exit 1
+          fi
