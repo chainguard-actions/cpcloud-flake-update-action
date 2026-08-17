@@ -1,0 +1,113 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.sha }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  get-flakes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.get-flakes.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2
+      - uses: cachix/install-nix-action@d56f3ce9be45c562799280e8a561fbbe8f36de44 # v16
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: generate flake matrix
+        id: get-flakes
+        run: |
+          set -euo pipefail
+
+          flakes="$(nix flake metadata --json | jq -rcM '.locks.nodes.root.inputs | {flake: keys}')"
+          echo "matrix=$flakes" >> "$GITHUB_OUTPUT"
+  flake-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    needs:
+      - get-flakes
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.get-flakes.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@d56f3ce9be45c562799280e8a561fbbe8f36de44 # v16
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable-small
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - uses: tibdex/github-app-token@32691ba7c9e7063bd457bd8f2a5703138591fa58 # v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Update ${{ matrix.flake }}
+        uses: ./
+        with:
+          dependency: ${{ matrix.flake }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-token: ${{ steps.generate-token.outputs.token }}
+          pull-request-author: "phillip-ground[bot] <phillip-ground[bot]@users.noreply.github.com>"
+          pull-request-labels: dependencies,autorebase:opt-in
+          automerge: true
+          delete-branch: true
+  release:
+    runs-on: ubuntu-latest
+    concurrency: release
+    permissions:
+      contents: write
+      pull-requests: write
+    needs:
+      - flake-update
+    steps:
+      - name: Generate a GitHub token
+        uses: tibdex/github-app-token@32691ba7c9e7063bd457bd8f2a5703138591fa58 # v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: checkout
+        uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: setup nodejs
+        uses: actions/setup-node@7c12f8017d5436eb855f1ed4399f037a36fbd9e8 # v2
+        with:
+          node-version: 16
+
+      - uses: cycjimmy/semantic-release-action@5982a02995853159735cb838992248c4f0f16166 # v2.7.0
+        with:
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/github
+            @semantic-release/git
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}

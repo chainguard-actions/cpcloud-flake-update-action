@@ -1,4 +1,4 @@
-name: Test basic usage - flake-update-action
+name: Test optional inputs - flake-update-action
 on:
   workflow_dispatch:
 jobs:
@@ -52,7 +52,7 @@ jobs:
           git add flake.nix flake.lock
           git commit -m "Add test flake files"
 
-      - name: Invoke flake-update-action (expect failure at nix or dep-info step)
+      - name: Invoke flake-update-action with optional inputs
         id: action
         uses: .
         continue-on-error: true
@@ -60,8 +60,15 @@ jobs:
           dependency: nixpkgs
           pull-request-token: ${{ github.token }}
           pull-request-author: "Test User <test@example.com>"
+          pull-request-merge-method: squash
+          delete-branch: "true"
+          pull-request-branch-prefix: "test/update-"
+          pull-request-labels: "dependencies,nix"
+          include-merge-commits: "false"
+          automerge: "false"
+          github-token: ${{ github.token }}
 
-      - name: Assert action was invoked (step ran, even if it failed due to missing nix)
+      - name: Assert action was invoked with optional inputs
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
@@ -72,4 +79,4 @@ jobs:
             echo "FAIL: action step was skipped unexpectedly"
             exit 1
           fi
-          echo "PASS: action was invoked (outcome: $OUTCOME)"
+          echo "PASS: action was invoked with optional inputs (outcome: $OUTCOME)"
