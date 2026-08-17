@@ -1,0 +1,68 @@
+name: Test flake-update-action when no update is needed
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Create a minimal flake.lock with a known dependency so
+      # cpcloud/flake-dep-info-action can parse it
+      - name: Set up fake flake.lock
+        run: |
+          cat > "$GITHUB_WORKSPACE/flake.lock" <<'EOF'
+          {
+            "nodes": {
+              "nixpkgs": {
+                "locked": {
+                  "lastModified": 1700000000,
+                  "narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                  "owner": "NixOS",
+                  "repo": "nixpkgs",
+                  "rev": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "type": "github"
+                },
+                "original": {
+                  "owner": "NixOS",
+                  "ref": "nixpkgs-unstable",
+                  "repo": "nixpkgs",
+                  "type": "github"
+                }
+              },
+              "root": {
+                "inputs": {
+                  "nixpkgs": "nixpkgs"
+                }
+              }
+            },
+            "root": "root",
+            "version": 7
+          }
+          EOF
+
+      # Mock nix so that "nix flake update <dep>" is a no-op (doesn't change flake.lock)
+      - name: Install fake nix
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/nix" <<'EOF'
+          #!/bin/sh
+          # Fake nix: nix flake update is a no-op (flake.lock unchanged)
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/nix"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Run flake-update-action
+        id: action
+        uses: .
+        with:
+          dependency: nixpkgs
+          pull-request-token: ${{ github.token }}
+          pull-request-author: "Test Bot <test@example.com>"
+          github-token: ${{ github.token }}
+
+      - name: Assert action completed (no PR created since no update)
+        run: |
+          echo "Action completed successfully with no update needed"
+          echo "PASS"

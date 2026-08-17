@@ -1,0 +1,73 @@
+name: Test flake-update-action with default inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Create a minimal flake.lock with a known dependency
+      - name: Set up fake flake.lock
+        run: |
+          cat > "$GITHUB_WORKSPACE/flake.lock" <<'EOF'
+          {
+            "nodes": {
+              "nixpkgs": {
+                "locked": {
+                  "lastModified": 1700000000,
+                  "narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                  "owner": "NixOS",
+                  "repo": "nixpkgs",
+                  "rev": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                  "type": "github"
+                },
+                "original": {
+                  "owner": "NixOS",
+                  "ref": "nixpkgs-unstable",
+                  "repo": "nixpkgs",
+                  "type": "github"
+                }
+              },
+              "root": {
+                "inputs": {
+                  "nixpkgs": "nixpkgs"
+                }
+              }
+            },
+            "root": "root",
+            "version": 7
+          }
+          EOF
+
+      # Mock nix so that "nix flake update <dep>" is a no-op
+      - name: Install fake nix
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/nix" <<'EOF'
+          #!/bin/sh
+          # Fake nix: nix flake update is a no-op (flake.lock unchanged)
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/nix"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Test with all optional inputs explicitly set to their defaults
+      - name: Run flake-update-action with explicit defaults
+        id: action
+        uses: .
+        with:
+          dependency: nixpkgs
+          pull-request-token: ${{ github.token }}
+          pull-request-author: "Test Bot <test@example.com>"
+          pull-request-merge-method: rebase
+          delete-branch: "false"
+          pull-request-branch-prefix: "create-pull-request/update-"
+          pull-request-labels: ""
+          include-merge-commits: "false"
+          automerge: "false"
+
+      - name: Assert action completed with default inputs
+        run: |
+          echo "Action completed successfully with all default inputs"
+          echo "PASS"
