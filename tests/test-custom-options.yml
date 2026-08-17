@@ -1,4 +1,4 @@
-name: Test basic invocation with required inputs
+name: Test custom optional inputs (branch prefix, labels, merge method)
 on:
   workflow_dispatch:
 jobs:
@@ -21,29 +21,30 @@ jobs:
           chmod +x "$HOME/.local/bin/nix"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Set up a minimal flake.lock with flake-utils dependency
+      - name: Set up a minimal flake.lock with nixpkgs dependency
         run: |
           cat > "$GITHUB_WORKSPACE/flake.lock" << 'EOF'
           {
             "nodes": {
-              "flake-utils": {
+              "nixpkgs": {
                 "locked": {
-                  "lastModified": 1667395993,
-                  "narHash": "sha256-nuEHfE/LcWyuSWnS8t12N1wc105Qtau+/OdUAjtQ0rA=",
-                  "owner": "numtide",
-                  "repo": "flake-utils",
-                  "rev": "5aed5285a952e0b949eb3ba02c12fa4fcfef535f",
+                  "lastModified": 1672411825,
+                  "narHash": "sha256-r8LVwXJ4NiiW2llqaN214MW+jjekRgIlctuAMyxx7go=",
+                  "owner": "NixOS",
+                  "repo": "nixpkgs",
+                  "rev": "8507321ef814735e8cdd24047dd191bc0a0b228c",
                   "type": "github"
                 },
                 "original": {
-                  "owner": "numtide",
-                  "repo": "flake-utils",
+                  "owner": "NixOS",
+                  "ref": "nixos-unstable-small",
+                  "repo": "nixpkgs",
                   "type": "github"
                 }
               },
               "root": {
                 "inputs": {
-                  "flake-utils": "flake-utils"
+                  "nixpkgs": "nixpkgs"
                 }
               }
             },
@@ -52,24 +53,30 @@ jobs:
           }
           EOF
 
-      - name: Run flake-update-action with basic required inputs
+      - name: Run flake-update-action with custom optional inputs
         id: action
         uses: .
         with:
-          dependency: flake-utils
+          dependency: nixpkgs
           pull-request-token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-author: "Test User <test@example.com>"
+          pull-request-author: "Test Bot <bot@example.com>"
+          pull-request-merge-method: "squash"
+          delete-branch: "true"
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-branch-prefix: "deps/update-"
+          pull-request-labels: "dependencies,nix"
+          include-merge-commits: "false"
+          automerge: "false"
 
-      - name: Assert action completed without creating a PR (no change)
+      - name: Assert action completed without error
         env:
           PR_NUMBER: ${{ steps.action.outputs.pull-request-number }}
         run: |
           echo "PR number output: '$PR_NUMBER'"
           # Since nix is mocked to be a no-op, flake.lock won't change,
-          # so no PR should be created
+          # so no PR should be created even with custom options
           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "" ]; then
             echo "FAIL: expected no PR to be created when dependency is unchanged"
             exit 1
           fi
-          echo "PASS: action completed successfully with no PR created"
+          echo "PASS: action accepted all custom optional inputs and completed successfully"
