@@ -1,4 +1,4 @@
-name: Test flake-update-action basic usage
+name: Test flake-update-action with optional inputs
 on:
   workflow_dispatch:
 jobs:
@@ -12,14 +12,13 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           cat > "$HOME/.local/bin/nix" << 'EOF'
           #!/bin/sh
-          # Fake nix: do nothing so flake.lock stays unchanged,
-          # meaning current rev == new rev and no PR is created
+          # Fake nix: do nothing so flake.lock stays unchanged
           exit 0
           EOF
           chmod +x "$HOME/.local/bin/nix"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Set up a minimal flake repository with a known dependency
+      - name: Set up a minimal flake.lock with a known dependency
         run: |
           git config user.email "test@example.com"
           git config user.name "Test User"
@@ -36,7 +35,6 @@ jobs:
           EOF
 
           # Write a minimal flake.lock with a known nixpkgs rev
-          # cpcloud/flake-dep-info-action reads owner, repo, rev from this file
           cat > "$GITHUB_WORKSPACE/flake.lock" << 'EOF'
           {
             "nodes": {
@@ -70,18 +68,22 @@ jobs:
           git add flake.nix flake.lock
           git commit -m "chore: add flake files"
 
-      - name: Run flake-update-action
+      - name: Run flake-update-action with all optional inputs specified
         id: action
         uses: .
         with:
           dependency: nixpkgs
           pull-request-token: ${{ github.token }}
           pull-request-author: "Test User <test@example.com>"
-          pull-request-branch-prefix: "test/update-"
-          delete-branch: "false"
+          pull-request-merge-method: "squash"
+          delete-branch: "true"
+          github-token: ${{ github.token }}
+          pull-request-branch-prefix: "deps/update-"
+          pull-request-labels: "dependencies,nix"
+          include-merge-commits: "false"
           automerge: "false"
 
-      - name: Assert action completed successfully
+      - name: Assert action completed with all optional inputs
         run: |
-          echo "Action completed successfully (no-change path: nix was a no-op)"
+          echo "Action completed successfully with all optional inputs specified"
           echo "PASS"
