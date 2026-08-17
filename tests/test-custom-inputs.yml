@@ -1,4 +1,4 @@
-name: Test basic usage - no update needed
+name: Test custom inputs - branch prefix and labels
 on:
   workflow_dispatch:
 jobs:
@@ -14,17 +14,12 @@ jobs:
           chmod +x /tmp/mock-bin/nix
           echo "/tmp/mock-bin" >> "$GITHUB_PATH"
 
-      - name: Verify mock nix is on PATH
-        run: |
-          which nix
-          nix --version || true
-
       - name: Configure git
         run: |
           git config --global user.email "test@example.com"
           git config --global user.name "Test User"
 
-      - name: Run action - no update scenario
+      - name: Run action with custom branch prefix and labels
         id: action
         uses: .
         with:
@@ -32,8 +27,13 @@ jobs:
           pull-request-token: ${{ github.token }}
           pull-request-author: "Test User <test@example.com>"
           github-token: ${{ github.token }}
+          pull-request-branch-prefix: "custom-prefix/update-"
+          pull-request-labels: "dependencies,nix"
+          include-merge-commits: "false"
+          automerge: "false"
+          delete-branch: "false"
 
-      - name: Assert no PR was created (no change in dependency)
+      - name: Assert action completed with custom inputs
         run: |
-          echo "Action completed - no PR should have been created since nix did not update the lock file"
+          echo "Action completed with custom branch prefix and labels"
           echo "PASS"

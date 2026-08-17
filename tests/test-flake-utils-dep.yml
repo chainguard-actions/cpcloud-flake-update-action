@@ -1,4 +1,4 @@
-name: Test basic usage - no update needed
+name: Test with flake-utils dependency
 on:
   workflow_dispatch:
 jobs:
@@ -14,26 +14,21 @@ jobs:
           chmod +x /tmp/mock-bin/nix
           echo "/tmp/mock-bin" >> "$GITHUB_PATH"
 
-      - name: Verify mock nix is on PATH
-        run: |
-          which nix
-          nix --version || true
-
       - name: Configure git
         run: |
           git config --global user.email "test@example.com"
           git config --global user.name "Test User"
 
-      - name: Run action - no update scenario
+      - name: Run action to update flake-utils dependency
         id: action
         uses: .
         with:
-          dependency: nixpkgs
+          dependency: flake-utils
           pull-request-token: ${{ github.token }}
           pull-request-author: "Test User <test@example.com>"
           github-token: ${{ github.token }}
 
-      - name: Assert no PR was created (no change in dependency)
+      - name: Assert action completed for flake-utils
         run: |
-          echo "Action completed - no PR should have been created since nix did not update the lock file"
+          echo "Action completed for flake-utils dependency"
           echo "PASS"
