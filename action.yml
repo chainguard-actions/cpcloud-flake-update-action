@@ -60,7 +60,7 @@ runs:
           "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
     - name: Get current commit
       id: get_current_commit
-      uses: cpcloud/flake-dep-info-action@9897b26be9888c610fbcb0ceb4322f535c2152b9 # v2.0.11
+      uses: chainguard-actions/cpcloud-flake-dep-info-action@cb8a75fdc1ab96918fccdff1737d393c075e0752 # v2.0.11
       with:
         input: ${{ inputs.dependency }}
     - name: Update ${{ inputs.dependency }}
@@ -70,11 +70,11 @@ runs:
       run: nix flake lock --update-input "$DEPENDENCY"
     - name: Get new commit
       id: get_new_commit
-      uses: cpcloud/flake-dep-info-action@9897b26be9888c610fbcb0ceb4322f535c2152b9 # v2.0.11
+      uses: chainguard-actions/cpcloud-flake-dep-info-action@cb8a75fdc1ab96918fccdff1737d393c075e0752 # v2.0.11
       with:
         input: ${{ inputs.dependency }}
     - name: Get commit details for ${{ inputs.dependency }} changes
-      uses: cpcloud/compare-commits-action@fad8cf390aedb7d442e9e9a8ed1a980d90f2f7e5 # v5.0.37
+      uses: chainguard-actions/cpcloud-compare-commits-action@1a6a150b608ca23427c70b969cad8d0e994d4e77 # v5.0.37
       id: compare_commits
       if: ${{ steps.get_current_commit.outputs.rev != steps.get_new_commit.outputs.rev }}
       with:
@@ -86,7 +86,7 @@ runs:
     - name: Create a pull request to update ${{ inputs.dependency }}
       if: ${{ steps.get_current_commit.outputs.rev != steps.get_new_commit.outputs.rev }}
       id: create_pr
-      uses: peter-evans/create-pull-request@4e1beaa7521e8b457b572c090b25bd3db56bf1c5 # v5
+      uses: chainguard-actions/peter-evans-create-pull-request@cbf2cf72a76ae6e9a2186396556ecb5cdc45e4a7 # v5
       with:
         commit-message: "chore(flake/${{ inputs.dependency }}): ${{ steps.get_current_commit.outputs.short-rev }} -> ${{ steps.get_new_commit.outputs.short-rev }}"
         branch: "${{ inputs.pull-request-branch-prefix }}${{ inputs.dependency }}"
@@ -98,7 +98,7 @@ runs:
         labels: ${{ inputs.pull-request-labels }}
     - name: Set the PR to automerge
       if: ${{ steps.create_pr.outputs.pull-request-operation == 'created' && fromJSON(inputs.automerge) }}
-      uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d # v3
+      uses: chainguard-actions/peter-evans-enable-pull-request-automerge@506aa598c0d0f3b341939a046727f1203f9e85eb # v3
       with:
         token: ${{ inputs.pull-request-token }}
         pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
