@@ -74,7 +74,7 @@ runs:
       with:
         input: ${{ inputs.dependency }}
     - name: Get commit details for ${{ inputs.dependency }} changes
-      uses: cpcloud/compare-commits-action@92437d53c25093bfc3a7fa5355cd2625aa85cc7b # v5.0.27
+      uses: chainguard-actions/cpcloud-compare-commits-action@fb42783a7db1ef755c08bd3c70e41f70dd3472d1 # v5.0.27
       id: compare_commits
       if: ${{ steps.get_current_commit.outputs.rev != steps.get_new_commit.outputs.rev }}
       with:
@@ -86,7 +86,7 @@ runs:
     - name: Create a pull request to update ${{ inputs.dependency }}
       if: ${{ steps.get_current_commit.outputs.rev != steps.get_new_commit.outputs.rev }}
       id: create_pr
-      uses: peter-evans/create-pull-request@18f7dc018cc2cd597073088f7c7591b9d1c02672 # v3
+      uses: chainguard-actions/peter-evans-create-pull-request@e0cd8f8febc47e58fd903c3310d115f83e67f124 # v3
       with:
         commit-message: "chore(flake/${{ inputs.dependency }}): ${{ steps.get_current_commit.outputs.short-rev }} -> ${{ steps.get_new_commit.outputs.short-rev }}"
         branch: "${{ inputs.pull-request-branch-prefix }}${{ inputs.dependency }}"
@@ -98,7 +98,7 @@ runs:
         labels: ${{ inputs.pull-request-labels }}
     - name: Set the PR to automerge
       if: ${{ steps.create_pr.outputs.pull-request-operation == 'created' && fromJSON(inputs.automerge) }}
-      uses: peter-evans/enable-pull-request-automerge@21d45e1c52f5d111d2019b5d33f953ed2e735c46 # v1
+      uses: chainguard-actions/peter-evans-enable-pull-request-automerge@a5b513f2cde28cc21b33fd42484397118b2a22e3 # v1
       with:
         token: ${{ inputs.pull-request-token }}
         pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}

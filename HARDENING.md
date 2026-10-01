@@ -10,65 +10,35 @@
 
 **Harden Agent Version:** `2`
 
-Action **cpcloud--flake-update-action/v1.0.4** was hardened automatically. 4 finding(s) were identified and resolved across 1 iteration(s).
+Action **cpcloud--flake-update-action/v1.0.4** was hardened automatically. 3 finding(s) were identified and resolved across 1 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Sub-rule (a): A GitHub Actions expression is interpolated directly inside a run: shell command string. The step 'Update ${{ inputs.dependency }}' runs: `nix flake lock --update-input ${{ inputs.dependency }}`. The value of `inputs.dependency` is controlled by the caller and is substituted into the shell command before the shell ever sees it, enabling arbitrary command injection (e.g., a dependency name containing `;`, `$(...)`, or other shell metacharacters).
+Sub-rule (a) violation: A ${{ }} expression is interpolated directly inside a `run:` shell command. The step `run: nix flake lock --update-input ${{ inputs.dependency }}` injects the caller-controlled `inputs.dependency` value directly into the shell command string before the shell ever sees it. An attacker who controls this input can inject arbitrary shell commands (e.g., by supplying a value like `foo; malicious-command`). Fix: move the value into an `env:` variable and double-quote it in the script: `env:\n  DEPENDENCY: ${{ inputs.dependency }}\nrun: nix flake lock --update-input "$DEPENDENCY"`
 
 Locations:
 
-- `action.yml:46`
+- `action.yml:47`
 
 ### unpinned-uses (severity: high)
 
-Multiple uses: references are pinned to mutable version tags rather than immutable 40-character commit SHAs, making the action vulnerable to supply-chain attacks if any referenced tag is moved or the upstream repository is compromised.
-
-In action.yml:
-- cpcloud/flake-dep-info-action@v2.0.10 (×2)
-- cpcloud/compare-commits-action@v5.0.27
-- peter-evans/create-pull-request@v3
-- peter-evans/enable-pull-request-automerge@v1
-
-In .github/workflows/ci.yml:
-- actions/checkout@v2 (×2)
-- cachix/install-nix-action@v16 (×2)
-- tibdex/github-app-token@v1 (×2)
-- actions/setup-node@v2
-- cycjimmy/semantic-release-action@v2.7.0
-
-In .github/workflows/auto-rebase.yml:
-- tibdex/github-app-token@v1
-- Label305/AutoRebase@v0.1
+All 5 `uses:` references in action.yml are pinned to mutable version tags rather than immutable 40-character commit SHAs. If any of these upstream actions is compromised or the tag is moved, malicious code will run in all workflows that use this action. Failing references:
+- `cpcloud/flake-dep-info-action@v2.0.10` (line 43)
+- `cpcloud/flake-dep-info-action@v2.0.10` (line 51)
+- `cpcloud/compare-commits-action@v5.0.27` (line 54)
+- `peter-evans/create-pull-request@v3` (line 67)
+- `peter-evans/enable-pull-request-automerge@v1` (line 82)
+Fix: replace each tag with the full 40-character commit SHA, e.g. `uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v2.0.10`.
 
 Locations:
 
 - `action.yml:43`
 - `action.yml:51`
-- `action.yml:55`
-- `action.yml:68`
+- `action.yml:54`
+- `action.yml:67`
 - `action.yml:82`
-- `.github/workflows/ci.yml:22`
-- `.github/workflows/ci.yml:24`
-- `.github/workflows/ci.yml:37`
-- `.github/workflows/ci.yml:39`
-- `.github/workflows/ci.yml:45`
-- `.github/workflows/ci.yml:62`
-- `.github/workflows/ci.yml:70`
-- `.github/workflows/ci.yml:75`
-- `.github/workflows/auto-rebase.yml:17`
-- `.github/workflows/auto-rebase.yml:22`
-
-### missing-permissions (severity: medium)
-
-Neither workflow file defines a top-level permissions: key, and no individual job within either file defines a job-level permissions: key. This means all jobs run with the default GitHub Actions permissions, which include write access to repository contents and other sensitive scopes. Explicit minimal permissions should be declared.
-
-Locations:
-
-- `.github/workflows/ci.yml:1`
-- `.github/workflows/auto-rebase.yml:1`
 
 ### static-inline-injection (severity: high)
 
@@ -82,17 +52,15 @@ Locations:
 
 ### Iteration 1
 
-**Fixes applied:** script-injection, static-inline-injection, unpinned-uses, missing-permissions
+**Fixes applied:** script-injection, unpinned-uses, static-inline-injection
 
 **Notes:**
 
-Fixed all 4 findings across 3 files:
-
-1. action.yml - script-injection/static-inline-injection: Moved `${{ inputs.dependency }}` from the `run:` shell command into an `env:` block as `DEPENDENCY`, referenced as `"$DEPENDENCY"` in the shell script.
-
-2. action.yml - unpinned-uses: Pinned all 5 action references to full commit SHAs (cpcloud/flake-dep-info-action×2, cpcloud/compare-commits-action, peter-evans/create-pull-request, peter-evans/enable-pull-request-automerge).
-
-3. .github/workflows/ci.yml - unpinned-uses: Pinned all 7 action references (actions/checkout×3, cachix/install-nix-action×2, tibdex/github-app-token×2, actions/setup-node, cycjimmy/semantic-release-action). Added top-level `permissions: contents: read` and job-level permissions (contents: write + pull-requests: write for flake-update and release jobs; contents: read for get-flakes).
-
-4. .github/workflows/auto-rebase.yml - unpinned-uses + missing-permissions: Pinned tibdex/github-app-token and Label305/AutoRebase. Added top-level `permissions: contents: read` and job-level `contents: write, pull-requests: write` for the auto-rebase job.
+Fixed all three findings in action.yml:
+1. script-injection / static-inline-injection: Moved `${{ inputs.dependency }}` from the `run:` shell command into an `env:` block as `DEPENDENCY: ${{ inputs.dependency }}`, then referenced it as `"$DEPENDENCY"` in the shell script to prevent shell injection.
+2. unpinned-uses: Pinned all 5 `uses:` references to full 40-character commit SHAs:
+   - cpcloud/flake-dep-info-action@v2.0.10 → @6817d58e7ac2c6e435c25d533469c16018858c4f (used twice)
+   - cpcloud/compare-commits-action@v5.0.27 → @92437d53c25093bfc3a7fa5355cd2625aa85cc7b
+   - peter-evans/create-pull-request@v3 → @18f7dc018cc2cd597073088f7c7591b9d1c02672
+   - peter-evans/enable-pull-request-automerge@v1 → @21d45e1c52f5d111d2019b5d33f953ed2e735c46
 
