@@ -60,7 +60,7 @@ runs:
           "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
     - name: Get current commit
       id: get_current_commit
-      uses: cpcloud/flake-dep-info-action@6817d58e7ac2c6e435c25d533469c16018858c4f # v2.0.10
+      uses: chainguard-actions/cpcloud-flake-dep-info-action@57d5ff739eb77ae9896e759c3a93c34aca998d89 # v2.0.10
       with:
         input: ${{ inputs.dependency }}
     - name: Update ${{ inputs.dependency }}
@@ -70,7 +70,7 @@ runs:
       run: nix flake lock --update-input "$DEPENDENCY"
     - name: Get new commit
       id: get_new_commit
-      uses: cpcloud/flake-dep-info-action@6817d58e7ac2c6e435c25d533469c16018858c4f # v2.0.10
+      uses: chainguard-actions/cpcloud-flake-dep-info-action@57d5ff739eb77ae9896e759c3a93c34aca998d89 # v2.0.10
       with:
         input: ${{ inputs.dependency }}
     - name: Get commit details for ${{ inputs.dependency }} changes
